@@ -171,7 +171,7 @@ Documentação de decisões técnicas (ADRs) disponível em [`/docs`](./docs).
 | Nome | Papel principal | GitHub |
 |---|---|---|
 | Dev A | Frontend | [@usuario](https://github.com/usuario) |
-| Dev B | Backend | [@usuario](https://github.com/usuario) |
+| Adryano Oliveira | Backend | [@usuario](https://github.com/usuario) |
 
 ---
 

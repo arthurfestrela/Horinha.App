@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Fraunces', 'Georgia', serif;
+  --font-sans: 'Work Sans', system-ui, sans-serif;
+  --font-hand: 'Caveat', cursive;
+
+  /* Paleta "calor artesanal": couro, madeira, dourado envelhecido */
+  --color-cream: #f6ecd9;
+  --color-cream-dark: #ecdfc3;
+  --color-parchment: #fbf5e9;
+  --color-leather: #8a4328;
+  --color-leather-dark: #5e2c1a;
+  --color-leather-light: #b46a45;
+  --color-gold: #c08a2e;
+  --color-gold-light: #e0b563;
+  --color-olive: #565f3f;
+  --color-espresso: #2a1b12;
+  --color-espresso-light: #3c281b;
+
+  --shadow-stamp: 0 1px 0 0 rgba(42, 27, 18, 0.08);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-cream);
+    color: var(--color-espresso);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--color-espresso);
+  }
+}
+
+@layer components {
+  /* Textura de grão sutil, para fugir do visual "flat" de SaaS genérico */
+  .grain {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Borda "costurada" em couro, usada nos cards de funcionalidades */
+  .stitched {
+    border: 2px dashed color-mix(in srgb, var(--color-leather) 45%, transparent);
+    border-radius: 0.75rem;
+  }
+
+  /* Selo rotacionado, tipo carimbo de couro */
+  .stamp {
+    display: inline-flex;
+    transform: rotate(-3deg);
+    border: 2px solid var(--color-leather);
+    border-radius: 9999px;
+    font-family: var(--font-hand);
+  }
+}
