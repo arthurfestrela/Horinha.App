@@ -1,91 +1,166 @@
 import { prisma } from "../lib/prisma";
+import { AppointmentStatus } from "@prisma/client";
 
-async function getUserEstablishment(clerkUserId: string) {
-  const user = await prisma.user.findUnique({
-    where: { clerkUserId },
-    include: { establishment: true },
-  });
-
-  if (!user?.establishment) {
-    throw new Error("Estabelecimento não encontrado.");
-  }
-
-  return user.establishment;
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
 }
 
-export async function createAppointmentService(
-  clerkUserId: string,
-  data: {
-    clientName: string;
-    clientEmail: string;
-    date: string;
-    serviceId: string;
-    professionalId?: string;
+function dateToTime(date: Date) {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function getWeekDay(date: Date) {
+  const weekDays = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ];
+
+  return weekDays[date.getDay()];
+}
+
+export async function createAppointmentService(data: {
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  professionalId: string;
+  serviceId: string;
+  date: Date;
+}) {
+  const professional = await prisma.professional.findUnique({
+    where: { id: data.professionalId },
+    include: {
+      establishment: true,
+      schedules: true,
+    },
+  });
+
+  if (!professional) {
+    throw new Error("Profissional não encontrado.");
   }
-) {
-  const establishment = await getUserEstablishment(clerkUserId);
 
   const service = await prisma.service.findFirst({
     where: {
       id: data.serviceId,
-      establishmentId: establishment.id,
+      establishmentId: professional.establishmentId,
     },
   });
 
   if (!service) {
-    throw new Error("Serviço não encontrado.");
+    throw new Error("Serviço não encontrado para este estabelecimento.");
   }
 
-  if (data.professionalId) {
-    const professional = await prisma.professional.findFirst({
-      where: {
-        id: data.professionalId,
-        establishmentId: establishment.id,
-      },
-    });
+  const weekDay = getWeekDay(data.date);
 
-    if (!professional) {
-      throw new Error("Profissional não encontrado.");
+  const schedule = professional.schedules.find(
+    (item) => item.weekDay === weekDay
+  );
+
+  if (!schedule || schedule.isDayOff) {
+    throw new Error("Profissional não atende neste dia.");
+  }
+
+  const appointmentTime = timeToMinutes(dateToTime(data.date));
+  const start = timeToMinutes(schedule.startTime);
+  const end = timeToMinutes(schedule.endTime);
+  const duration = Number(service.durationMinutes);
+  const appointmentEnd = appointmentTime + duration;
+
+  if (appointmentTime < start || appointmentEnd > end) {
+    throw new Error("Horário fora do expediente do profissional.");
+  }
+
+  if (schedule.breakStart && schedule.breakEnd) {
+    const breakStart = timeToMinutes(schedule.breakStart);
+    const breakEnd = timeToMinutes(schedule.breakEnd);
+
+    const overlapsBreak =
+      appointmentTime < breakEnd && appointmentEnd > breakStart;
+
+    if (overlapsBreak) {
+      throw new Error("Horário dentro do intervalo do profissional.");
     }
   }
 
-  const appointmentDate = new Date(data.date);
+  const startOfDay = new Date(data.date);
+  startOfDay.setHours(0, 0, 0, 0);
 
-  const conflict = await prisma.appointment.findFirst({
+  const endOfDay = new Date(data.date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const blocks = await prisma.scheduleBlock.findMany({
     where: {
-      establishmentId: establishment.id,
       professionalId: data.professionalId,
-      date: appointmentDate,
-      status: "CONFIRMED",
+      startDate: {
+        lte: data.date,
+      },
+      endDate: {
+        gte: data.date,
+      },
     },
   });
 
-  if (conflict) {
-    throw new Error("Este horário já está ocupado.");
+  if (blocks.length > 0) {
+    throw new Error("Profissional indisponível neste horário.");
+  }
+
+  const conflictingAppointment = await prisma.appointment.findFirst({
+    where: {
+      professionalId: data.professionalId,
+      status: {
+        not: "CANCELED",
+      },
+      date: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    include: {
+      service: true,
+    },
+  });
+
+  if (conflictingAppointment) {
+    const existingStart = timeToMinutes(dateToTime(conflictingAppointment.date));
+    const existingDuration = Number(conflictingAppointment.service.durationMinutes);
+    const existingEnd = existingStart + existingDuration;
+
+    const hasConflict =
+      appointmentTime < existingEnd && appointmentEnd > existingStart;
+
+    if (hasConflict) {
+      throw new Error("Este horário já está ocupado.");
+    }
   }
 
   return prisma.appointment.create({
     data: {
       clientName: data.clientName,
       clientEmail: data.clientEmail,
-      date: appointmentDate,
-      establishmentId: establishment.id,
-      serviceId: data.serviceId,
+      clientPhone: data.clientPhone,
+      date: data.date,
+      status: "CONFIRMED",
       professionalId: data.professionalId,
+      serviceId: data.serviceId,
+      establishmentId: professional.establishmentId,
     },
   });
 }
 
-export async function getAppointmentsService(clerkUserId: string) {
-  const establishment = await getUserEstablishment(clerkUserId);
-
+export async function getAppointmentsService() {
   return prisma.appointment.findMany({
-    where: {
-      establishmentId: establishment.id,
-    },
     include: {
       service: true,
       professional: true,
+      establishment: true,
     },
     orderBy: {
       date: "asc",
@@ -93,57 +168,37 @@ export async function getAppointmentsService(clerkUserId: string) {
   });
 }
 
-export async function updateAppointmentService(
-  clerkUserId: string,
-  id: string,
-  data: {
-    clientName?: string;
-    clientEmail?: string;
-    date?: string;
-    serviceId?: string;
-    professionalId?: string;
-    status?: "CONFIRMED" | "CANCELED" | "FINISHED";
-  }
-) {
-  const establishment = await getUserEstablishment(clerkUserId);
-
-  const appointment = await prisma.appointment.findFirst({
-    where: {
-      id,
-      establishmentId: establishment.id,
-    },
+export async function cancelAppointmentService(id: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id },
   });
 
   if (!appointment) {
     throw new Error("Agendamento não encontrado.");
   }
-
-  const updateData = {
-    ...data,
-    date: data.date ? new Date(data.date) : undefined,
-  };
 
   return prisma.appointment.update({
     where: { id },
-    data: updateData,
+    data: {
+      status: "CANCELED",
+    },
   });
 }
 
-export async function deleteAppointmentService(clerkUserId: string, id: string) {
-  const establishment = await getUserEstablishment(clerkUserId);
-
-  const appointment = await prisma.appointment.findFirst({
-    where: {
-      id,
-      establishmentId: establishment.id,
-    },
+export async function updateAppointmentStatusService(
+  id: string,
+  status: AppointmentStatus
+) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id },
   });
 
   if (!appointment) {
     throw new Error("Agendamento não encontrado.");
   }
 
-  await prisma.appointment.delete({
+  return prisma.appointment.update({
     where: { id },
+    data: { status },
   });
 }

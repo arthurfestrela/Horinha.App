@@ -18,6 +18,11 @@ export const createEstablishmentSchema = z.object({
   district: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  openingTime: z.string().optional(),
+  closingTime: z.string().optional(),
+  breakStart: z.string().optional(),
+  breakEnd: z.string().optional(),
+  workingDays: z.string().optional(),
 });
 
 export const updateEstablishmentSchema = createEstablishmentSchema.partial();

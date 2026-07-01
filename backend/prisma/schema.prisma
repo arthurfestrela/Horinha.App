@@ -30,6 +30,11 @@ model Establishment {
   district  String?
   latitude  Float?
   longitude Float?
+  openingTime String?
+  closingTime String?
+  breakStart String?
+  breakEnd String?
+  workingDays String?
   ownerId         String          @unique
   owner           User            @relation(fields: [ownerId], references: [id])
   services        Service[]
@@ -63,29 +68,68 @@ model Professional {
   appointments    Appointment[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  schedules ProfessionalSchedule[]
+  scheduleBlocks ScheduleBlock[]
 }
 
 model Appointment {
   id              String          @id @default(uuid())
   clientName      String
-  clientEmail     String
+  clientEmail     String?
+  clientPhone     String?
   date            DateTime
   status          AppointmentStatus @default(CONFIRMED)
 
   establishmentId String
   serviceId       String
-  professionalId  String?
+  professionalId  String
 
   establishment   Establishment   @relation(fields: [establishmentId], references: [id])
   service         Service         @relation(fields: [serviceId], references: [id])
-  professional    Professional?   @relation(fields: [professionalId], references: [id])
+  professional    Professional   @relation(fields: [professionalId], references: [id])
 
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
 
+model ProfessionalSchedule {
+  id             String       @id @default(uuid())
+  weekDay        String
+
+  startTime      String
+  endTime        String
+
+  breakStart     String?
+  breakEnd       String?
+
+  isDayOff       Boolean      @default(false)
+
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduleBlock {
+  id          String   @id @default(uuid())
+
+  title       String
+  description String?
+
+  startDate   DateTime
+  endDate     DateTime
+
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum AppointmentStatus {
+  PENDING
   CONFIRMED
   CANCELED
-  FINISHED
+  COMPLETED
 }

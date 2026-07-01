@@ -28,6 +28,11 @@ export async function createEstablishmentService(
     district?: string;
     latitude?: number;
     longitude?: number;
+    openingTime?: string;
+    closingTime?: string;
+    breakStart?: string;
+    breakEnd?: string;
+    workingDays?: string;
     }
 ) {
   const user = await getUser(clerkUserId);
@@ -67,6 +72,11 @@ export async function createEstablishmentService(
       district: data.district,
       latitude: data.latitude,
       longitude: data.longitude,
+      openingTime: data.openingTime,
+      closingTime: data.closingTime,
+      breakStart: data.breakStart,
+      breakEnd: data.breakEnd,
+      workingDays: data.workingDays,
       ownerId: user.id,
     },
   });
@@ -103,6 +113,11 @@ export async function updateEstablishmentService(
     district?: string;
     latitude?: number;
     longitude?: number;
+    openingTime?: string;
+    closingTime?: string;
+    breakStart?: string;
+    breakEnd?: string;
+    workingDays?: string;
     }
 ) {
   const user = await prisma.user.findUnique({
