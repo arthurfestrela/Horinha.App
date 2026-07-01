@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String          @id @default(uuid())
+  clerkUserId     String          @unique
+  email           String
+  name            String?
+  establishment   Establishment?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Establishment {
+  id              String          @id @default(uuid())
+  name            String
+  slug            String          @unique
+  description     String?
+  address     String?
+  phone       String?
+  photoUrl  String?
+  city      String?
+  state     String?
+  district  String?
+  latitude  Float?
+  longitude Float?
+  openingTime String?
+  closingTime String?
+  breakStart String?
+  breakEnd String?
+  workingDays String?
+  ownerId         String          @unique
+  owner           User            @relation(fields: [ownerId], references: [id])
+  services        Service[]
+  professionals   Professional[]
+  appointments    Appointment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Service {
+  id              String          @id @default(uuid())
+  name            String
+  durationMinutes Int
+  price           Decimal
+  establishmentId String
+  establishment   Establishment   @relation(fields: [establishmentId], references: [id])
+  appointments    Appointment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Professional {
+  id              String          @id @default(uuid())
+  name            String
+  email           String?
+  description String?
+  avatarUrl   String?
+  isActive    Boolean @default(true)
+  establishmentId String
+  establishment   Establishment   @relation(fields: [establishmentId], references: [id])
+  appointments    Appointment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  schedules ProfessionalSchedule[]
+  scheduleBlocks ScheduleBlock[]
+}
+
+model Appointment {
+  id              String          @id @default(uuid())
+  clientName      String
+  clientEmail     String?
+  clientPhone     String?
+  date            DateTime
+  status          AppointmentStatus @default(CONFIRMED)
+
+  establishmentId String
+  serviceId       String
+  professionalId  String
+
+  establishment   Establishment   @relation(fields: [establishmentId], references: [id])
+  service         Service         @relation(fields: [serviceId], references: [id])
+  professional    Professional   @relation(fields: [professionalId], references: [id])
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model ProfessionalSchedule {
+  id             String       @id @default(uuid())
+  weekDay        String
+
+  startTime      String
+  endTime        String
+
+  breakStart     String?
+  breakEnd       String?
+
+  isDayOff       Boolean      @default(false)
+
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduleBlock {
+  id          String   @id @default(uuid())
+
+  title       String
+  description String?
+
+  startDate   DateTime
+  endDate     DateTime
+
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  COMPLETED
+}
