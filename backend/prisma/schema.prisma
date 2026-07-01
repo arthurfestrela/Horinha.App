@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String          @id @default(uuid())
+  clerkUserId     String          @unique
+  email           String
+  name            String?
+  establishment   Establishment?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Establishment {
+  id              String          @id @default(uuid())
+  name            String
+  slug            String          @unique
+  description     String?
+  address     String?
+  phone       String?
+  photoUrl  String?
+  city      String?
+  state     String?
+  district  String?
+  latitude  Float?
+  longitude Float?
+  ownerId         String          @unique
+  owner           User            @relation(fields: [ownerId], references: [id])
+  services        Service[]
+  professionals   Professional[]
+  appointments    Appointment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Service {
+  id              String          @id @default(uuid())
+  name            String
+  durationMinutes Int
+  price           Decimal
+  establishmentId String
+  establishment   Establishment   @relation(fields: [establishmentId], references: [id])
+  appointments    Appointment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Professional {
+  id              String          @id @default(uuid())
+  name            String
+  email           String?
+  description String?
+  avatarUrl   String?
+  isActive    Boolean @default(true)
+  establishmentId String
+  establishment   Establishment   @relation(fields: [establishmentId], references: [id])
+  appointments    Appointment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Appointment {
+  id              String          @id @default(uuid())
+  clientName      String
+  clientEmail     String
+  date            DateTime
+  status          AppointmentStatus @default(CONFIRMED)
+
+  establishmentId String
+  serviceId       String
+  professionalId  String?
+
+  establishment   Establishment   @relation(fields: [establishmentId], references: [id])
+  service         Service         @relation(fields: [serviceId], references: [id])
+  professional    Professional?   @relation(fields: [professionalId], references: [id])
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CANCELED
+  FINISHED
+}
